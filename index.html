@@ -4,12 +4,8 @@
 <meta charset="UTF-8">
 <title>Smart Alarm</title>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-<!-- Chart.js -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
 body {
@@ -27,22 +23,25 @@ h1 {
   margin: 10px 0;
   border-radius: 10px;
 }
-.row {
+.time-picker {
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
 }
-select, button {
+select {
+  font-size: 20px;
+  padding: 8px;
+}
+.colon {
+  font-size: 22px;
+  font-weight: bold;
+}
+button {
   width: 100%;
   padding: 8px;
+  margin-top: 5px;
   font-size: 16px;
-}
-.unit {
-  width: 80px;
-  text-align: center;
-  line-height: 40px;
-}
-canvas {
-  margin-top: 10px;
 }
 </style>
 </head>
@@ -57,16 +56,12 @@ canvas {
 </div>
 
 <div class="card">
-  <b>ตั้งเวลา Alarm</b>
+  <b>เลือกเวลา Alarm</b>
 
-  <div class="row">
+  <div class="time-picker">
     <select id="hour"></select>
-    <div class="unit">(โมง)</div>
-  </div>
-
-  <div class="row">
+    <div class="colon">:</div>
     <select id="minute"></select>
-    <div class="unit">(นาที)</div>
   </div>
 
   <button onclick="setAlarm()">บันทึกเวลา</button>
@@ -82,22 +77,12 @@ canvas {
 </div>
 
 <div class="card">
-  <b>กราฟอุณหภูมิ</b>
-  <canvas id="tempChart"></canvas>
-</div>
-
-<div class="card">
-  <b>กราฟแสง</b>
-  <canvas id="lightChart"></canvas>
-</div>
-
-<div class="card">
   <b>สถานะ Alarm</b>
   <div id="status">ยังไม่ดัง</div>
 </div>
 
 <script>
-/* ===== Firebase config ===== */
+/* ===== Firebase ===== */
 var firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -107,78 +92,31 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
-/* ===== dropdown ===== */
+/* ===== time dropdown ===== */
 const hourSel = document.getElementById("hour");
 const minSel = document.getElementById("minute");
 
-for (let i = 0; i < 24; i++)
-  hourSel.innerHTML += `<option value="${i}">${i}</option>`;
-for (let i = 0; i < 60; i++)
-  minSel.innerHTML += `<option value="${i}">${i}</option>`;
+for (let i = 0; i < 24; i++) {
+  let v = i.toString().padStart(2, "0");
+  hourSel.innerHTML += `<option value="${i}">${v}</option>`;
+}
 
-/* ===== charts ===== */
-let labels = [];
-let tempData = [];
-let lightData = [];
+for (let i = 0; i < 60; i++) {
+  let v = i.toString().padStart(2, "0");
+  minSel.innerHTML += `<option value="${i}">${v}</option>`;
+}
 
-const tempChart = new Chart(
-  document.getElementById("tempChart"),
-  {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "อุณหภูมิ (°C)",
-        data: tempData,
-        borderColor: "red",
-        fill: false
-      }]
-    }
-  }
-);
+/* ===== realtime ===== */
+db.ref("time").on("value", s => {
+  document.getElementById("now").innerText = s.val() || "--:--:--";
+});
 
-const lightChart = new Chart(
-  document.getElementById("lightChart"),
-  {
-    type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "แสง",
-        data: lightData,
-        borderColor: "orange",
-        fill: false
-      }]
-    }
-  }
-);
-
-/* ===== realtime data ===== */
 db.ref("sensor").on("value", s => {
   const d = s.val();
   if (!d) return;
-
   document.getElementById("temp").innerText = d.temperature;
   document.getElementById("hum").innerText = d.humidity;
   document.getElementById("light").innerText = d.light;
-
-  const time = new Date().toLocaleTimeString();
-  labels.push(time);
-  tempData.push(d.temperature);
-  lightData.push(d.light);
-
-  if (labels.length > 10) {
-    labels.shift();
-    tempData.shift();
-    lightData.shift();
-  }
-
-  tempChart.update();
-  lightChart.update();
-});
-
-db.ref("time").on("value", s => {
-  document.getElementById("now").innerText = s.val() || "--:--:--";
 });
 
 db.ref("status/alarm_triggered").on("value", s => {
@@ -194,9 +132,11 @@ function setAlarm() {
   });
   alert("ตั้งเวลาเรียบร้อย");
 }
+
 function alarmOn() {
   db.ref("alarm/enable").set(true);
 }
+
 function alarmOff() {
   db.ref("alarm/enable").set(false);
 }
