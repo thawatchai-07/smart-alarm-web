@@ -11,9 +11,12 @@
   <style>
     body {
       font-family: sans-serif;
-      max-width: 400px;
+      max-width: 420px;
       margin: auto;
       background: #f2f2f2;
+    }
+    h1 {
+      text-align: center;
     }
     .card {
       background: white;
@@ -21,86 +24,106 @@
       margin: 10px 0;
       border-radius: 10px;
     }
-    input, button {
+    select, button {
       width: 100%;
       padding: 8px;
       margin: 5px 0;
+      font-size: 16px;
+    }
+    button {
+      cursor: pointer;
     }
   </style>
 </head>
 
 <body>
 
-  <h2>⏰ Smart Alarm</h2>
+<h1>⏰ Smart Alarm</h1>
 
-  <div class="card">
-    <b>เวลาปัจจุบัน</b>
-    <h3 id="time">--:--</h3>
-  </div>
+<div class="card">
+  <b>เวลาปัจจุบัน</b>
+  <div id="now">--:--:--</div>
+</div>
 
-  <div class="card">
-    <b>ตั้งเวลา Alarm</b>
-    <input type="number" id="hour" placeholder="ชั่วโมง (0-23)">
-    <input type="number" id="minute" placeholder="นาที (0-59)">
-    <button onclick="setAlarm()">บันทึกเวลา</button>
+<div class="card">
+  <b>ตั้งเวลา Alarm</b>
 
-    <button onclick="toggleAlarm(true)">เปิด Alarm</button>
-    <button onclick="toggleAlarm(false)">ปิด Alarm</button>
-  </div>
+  <select id="hour"></select>
+  <select id="minute"></select>
 
-  <div class="card">
-    <b>เซ็นเซอร์</b>
-    <p>🌡 อุณหภูมิ: <span id="temp">-</span> °C</p>
-    <p>💧 ความชื้น: <span id="hum">-</span> %</p>
-    <p>💡 แสง: <span id="light">-</span></p>
-  </div>
+  <button onclick="setAlarm()">บันทึกเวลา</button>
+  <button onclick="alarmOn()">เปิด Alarm</button>
+  <button onclick="alarmOff()">ปิด Alarm</button>
+</div>
 
-  <div class="card">
-    <b>สถานะ Alarm</b>
-    <p id="status">ยังไม่ดัง</p>
-  </div>
+<div class="card">
+  <b>การตรวจพบ</b>
+  <div>🌡 อุณหภูมิ: <span id="temp">0</span> °C</div>
+  <div>💧 ความชื้น: <span id="hum">0</span> %</div>
+  <div>💡 แสง: <span id="light">0</span></div>
+</div>
+
+<div class="card">
+  <b>สถานะ Alarm</b>
+  <div id="status">ยังไม่ดัง</div>
+</div>
 
 <script>
-  // 🔥 Firebase config
+  // 🔧 Firebase config (ใส่ของคุณเอง)
   var firebaseConfig = {
-    databaseURL: "https://smart-alarm-9c9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+    projectId: "YOUR_PROJECT"
   };
   firebase.initializeApp(firebaseConfig);
   var db = firebase.database();
 
-  // ===== Realtime time =====
-  db.ref("/time").on("value", snap => {
-    if (snap.exists()) {
-      document.getElementById("time").innerHTML =
-        snap.val().hour + ":" + snap.val().minute;
-    }
+  // ===== dropdown ชั่วโมง / นาที =====
+  const hourSel = document.getElementById("hour");
+  const minSel = document.getElementById("minute");
+
+  for (let i = 0; i < 24; i++) {
+    hourSel.innerHTML += `<option value="${i}">ชั่วโมง ${i}</option>`;
+  }
+  for (let i = 0; i < 60; i++) {
+    minSel.innerHTML += `<option value="${i}">นาที ${i}</option>`;
+  }
+
+  // ===== realtime clock =====
+  db.ref("time").on("value", s => {
+    document.getElementById("now").innerText = s.val() || "--:--:--";
   });
 
-  // ===== Sensor =====
-  db.ref("/sensor").on("value", snap => {
-    let d = snap.val();
+  // ===== sensors =====
+  db.ref("sensor").on("value", s => {
+    const d = s.val();
     if (!d) return;
-    document.getElementById("temp").innerHTML = d.temperature;
-    document.getElementById("hum").innerHTML = d.humidity;
-    document.getElementById("light").innerHTML = d.light;
+    document.getElementById("temp").innerText = d.temp;
+    document.getElementById("hum").innerText = d.hum;
+    document.getElementById("light").innerText = d.light;
   });
 
-  // ===== Alarm status =====
-  db.ref("/status/alarm_triggered").on("value", snap => {
-    document.getElementById("status").innerHTML =
-      snap.val() ? "⏰ Alarm ดังแล้ว!" : "ยังไม่ดัง";
+  // ===== alarm status =====
+  db.ref("alarm/status").on("value", s => {
+    document.getElementById("status").innerText =
+      s.val() ? "⏰ Alarm ดังแล้ว" : "ยังไม่ดัง";
   });
 
   function setAlarm() {
-    db.ref("/alarm").set({
-      hour: Number(document.getElementById("hour").value),
-      minute: Number(document.getElementById("minute").value)
+    db.ref("alarm").update({
+      hour: parseInt(hourSel.value),
+      minute: parseInt(minSel.value)
     });
-    alert("ตั้งเวลาเรียบร้อย");
+    alert("บันทึกเวลา Alarm แล้ว");
   }
 
-  function toggleAlarm(val) {
-    db.ref("/alarm/enable").set(val);
+  function alarmOn() {
+    db.ref("alarm/enable").set(true);
+  }
+
+  function alarmOff() {
+    db.ref("alarm/enable").set(false);
   }
 </script>
 
