@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Alarm</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 400px;
+      margin: auto;
+      background: #f2f2f2;
+    }
+    .card {
+      background: white;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 10px;
+    }
+    input, button {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>⏰ Smart Alarm</h2>
+
+  <div class="card">
+    <b>เวลาปัจจุบัน</b>
+    <h3 id="time">--:--</h3>
+  </div>
+
+  <div class="card">
+    <b>ตั้งเวลา Alarm</b>
+    <input type="number" id="hour" placeholder="ชั่วโมง (0-23)">
+    <input type="number" id="minute" placeholder="นาที (0-59)">
+    <button onclick="setAlarm()">บันทึกเวลา</button>
+
+    <button onclick="toggleAlarm(true)">เปิด Alarm</button>
+    <button onclick="toggleAlarm(false)">ปิด Alarm</button>
+  </div>
+
+  <div class="card">
+    <b>เซ็นเซอร์</b>
+    <p>🌡 อุณหภูมิ: <span id="temp">-</span> °C</p>
+    <p>💧 ความชื้น: <span id="hum">-</span> %</p>
+    <p>💡 แสง: <span id="light">-</span></p>
+  </div>
+
+  <div class="card">
+    <b>สถานะ Alarm</b>
+    <p id="status">ยังไม่ดัง</p>
+  </div>
+
+<script>
+  // 🔥 Firebase config
+  var firebaseConfig = {
+    databaseURL: "https://smart-alarm-9c9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.database();
+
+  // ===== Realtime time =====
+  db.ref("/time").on("value", snap => {
+    if (snap.exists()) {
+      document.getElementById("time").innerHTML =
+        snap.val().hour + ":" + snap.val().minute;
+    }
+  });
+
+  // ===== Sensor =====
+  db.ref("/sensor").on("value", snap => {
+    let d = snap.val();
+    if (!d) return;
+    document.getElementById("temp").innerHTML = d.temperature;
+    document.getElementById("hum").innerHTML = d.humidity;
+    document.getElementById("light").innerHTML = d.light;
+  });
+
+  // ===== Alarm status =====
+  db.ref("/status/alarm_triggered").on("value", snap => {
+    document.getElementById("status").innerHTML =
+      snap.val() ? "⏰ Alarm ดังแล้ว!" : "ยังไม่ดัง";
+  });
+
+  function setAlarm() {
+    db.ref("/alarm").set({
+      hour: Number(document.getElementById("hour").value),
+      minute: Number(document.getElementById("minute").value)
+    });
+    alert("ตั้งเวลาเรียบร้อย");
+  }
+
+  function toggleAlarm(val) {
+    db.ref("/alarm/enable").set(val);
+  }
+</script>
+
+</body>
+</html>
