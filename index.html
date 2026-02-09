@@ -1,115 +1,158 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <title>Smart Alarm</title>
+<meta charset="UTF-8">
+<title>Smart Alarm Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- Firebase v9 -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-    // 🔹 Firebase config ของคุณ
-    const firebaseConfig = {
-      databaseURL: "https://smart-alarm-9c9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    // ====== DOM ======
-    const tempEl = document.getElementById("temp");
-    const humEl = document.getElementById("hum");
-    const lightEl = document.getElementById("light");
-    const statusEl = document.getElementById("alarmStatus");
-
-    const hourSel = document.getElementById("hour");
-    const minSel = document.getElementById("minute");
-
-    // ====== อ่านค่า Sensor ======
-    onValue(ref(db, "sensor"), (snap) => {
-      if (snap.exists()) {
-        const d = snap.val();
-        tempEl.innerText = d.temperature + " °C";
-        humEl.innerText = d.humidity + " %";
-        lightEl.innerText = d.light;
-      }
-    });
-
-    // ====== อ่านสถานะ Alarm ======
-    onValue(ref(db, "alarm"), (snap) => {
-      if (snap.exists()) {
-        const d = snap.val();
-        hourSel.value = String(d.hour).padStart(2, "0");
-        minSel.value = String(d.minute).padStart(2, "0");
-        statusEl.innerText = d.enable ? "เปิดใช้งาน" : "ปิดอยู่";
-      }
-    });
-
-    // ====== บันทึกเวลา ======
-    window.saveAlarm = () => {
-      set(ref(db, "alarm"), {
-        hour: Number(hourSel.value),
-        minute: Number(minSel.value),
-        enable: true,
-        mode: "normal"
-      });
-      alert("บันทึกเวลาแล้ว");
-    };
-
-    window.enableAlarm = () => {
-      set(ref(db, "alarm/enable"), true);
-    };
-
-    window.disableAlarm = () => {
-      set(ref(db, "alarm/enable"), false);
-    };
-  </script>
-
-  <style>
-    body { font-family: sans-serif; background:#f5f5f5 }
-    .box { background:#fff; width:300px; margin:20px auto; padding:15px; border-radius:10px }
-    select, button { width:100%; margin-top:8px; padding:6px }
-  </style>
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#f4f6f8;
+  margin:0;
+  padding:20px;
+}
+h1{
+  text-align:center;
+}
+.container{
+  max-width:500px;
+  margin:auto;
+}
+.box{
+  background:#fff;
+  padding:15px;
+  margin:10px 0;
+  border-radius:10px;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+button{
+  width:100%;
+  padding:10px;
+  margin-top:5px;
+  font-size:16px;
+}
+select{
+  font-size:24px;
+}
+.status{
+  font-weight:bold;
+}
+</style>
 </head>
 
 <body>
+<h1>⏰ Smart Alarm</h1>
 
-<h2 style="text-align:center">⏰ Smart Alarm</h2>
+<div class="container">
 
-<div class="box">
-  <b>เลือกเวลา Alarm</b><br>
-  <select id="hour"></select> :
-  <select id="minute"></select>
+  <!-- เวลา -->
+  <div class="box">
+    <b>เวลาปัจจุบัน</b><br>
+    <span id="nowTime" style="font-size:28px">--:--:--</span>
+  </div>
 
-  <button onclick="saveAlarm()">บันทึกเวลา</button>
-  <button onclick="enableAlarm()">เปิด Alarm</button>
-  <button onclick="disableAlarm()">ปิด Alarm</button>
+  <!-- Alarm -->
+  <div class="box">
+    <b>ตั้งเวลา Alarm</b><br><br>
+    <div style="text-align:center;font-size:28px">
+      <select id="hour"></select> :
+      <select id="minute"></select>
+    </div>
+    <button onclick="saveAlarm()">บันทึกเวลา</button>
+    <button onclick="enableAlarm()">เปิด Alarm</button>
+    <button onclick="disableAlarm()">ปิด Alarm</button>
+    <p>สถานะ Alarm :
+      <span id="alarmStatus" class="status">--</span>
+    </p>
+  </div>
+
+  <!-- Sensor -->
+  <div class="box">
+    <b>ข้อมูลเซ็นเซอร์</b>
+    <p>🌡 อุณหภูมิ: <span id="temp">--</span></p>
+    <p>💧 ความชื้น: <span id="hum">--</span></p>
+    <p>💡 แสง: <span id="light">--</span></p>
+  </div>
+
+  <!-- Alarm State -->
+  <div class="box">
+    <b>สถานะการแจ้งเตือน</b><br>
+    <span id="alarmDone">--</span>
+  </div>
+
 </div>
 
-<div class="box">
-  <b>การตรวจพบ</b><br>
-  🌡 อุณหภูมิ: <span id="temp">-</span><br>
-  💧 ความชื้น: <span id="hum">-</span><br>
-  💡 แสง: <span id="light">-</span>
-</div>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, onValue, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-<div class="box">
-  <b>สถานะ Alarm</b><br>
-  <span id="alarmStatus">-</span>
-</div>
+/* 🔧 แก้เฉพาะ databaseURL ของคุณ */
+const firebaseConfig = {
+  databaseURL: "https://smart-alarm-9c9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
 
-<script>
-  // เติมตัวเลือกเวลา
-  const h = document.getElementById("hour");
-  const m = document.getElementById("minute");
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-  for (let i = 0; i < 24; i++)
-    h.innerHTML += `<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`;
+/* ===== real time clock ===== */
+function updateClock(){
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,"0");
+  const m = String(now.getMinutes()).padStart(2,"0");
+  const s = String(now.getSeconds()).padStart(2,"0");
+  document.getElementById("nowTime").innerText = `${h}:${m}:${s}`;
+}
+setInterval(updateClock,1000);
+updateClock();
 
-  for (let i = 0; i < 60; i++)
-    m.innerHTML += `<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}</option>`;
+/* ===== select option ===== */
+const hourSel = document.getElementById("hour");
+const minSel  = document.getElementById("minute");
+
+for(let i=0;i<24;i++){
+  const v = String(i).padStart(2,"0");
+  hourSel.innerHTML += `<option value="${v}">${v}</option>`;
+}
+for(let i=0;i<60;i++){
+  const v = String(i).padStart(2,"0");
+  minSel.innerHTML += `<option value="${v}">${v}</option>`;
+}
+
+/* ===== read sensor ===== */
+onValue(ref(db,"sensor"), snap=>{
+  if(!snap.exists()) return;
+  const d = snap.val();
+  document.getElementById("temp").innerText  = d.temperature + " °C";
+  document.getElementById("hum").innerText   = d.humidity + " %";
+  document.getElementById("light").innerText = d.light;
+});
+
+/* ===== read alarm ===== */
+onValue(ref(db,"alarm"), snap=>{
+  if(!snap.exists()) return;
+  const a = snap.val();
+  hourSel.value = String(a.hour).padStart(2,"0");
+  minSel.value  = String(a.minute).padStart(2,"0");
+  document.getElementById("alarmStatus").innerText =
+    a.enable ? "เปิดใช้งาน" : "ปิดอยู่";
+  document.getElementById("alarmDone").innerText =
+    a.done ? "⏰ Alarm ดังแล้ว" : "รอเวลา";
+});
+
+/* ===== buttons ===== */
+window.saveAlarm = ()=>{
+  update(ref(db,"alarm"),{
+    hour:Number(hourSel.value),
+    minute:Number(minSel.value),
+    done:false
+  });
+};
+
+window.enableAlarm  = ()=>update(ref(db,"alarm"),{enable:true});
+window.disableAlarm = ()=>update(ref(db,"alarm"),{enable:false});
+
 </script>
-
 </body>
 </html>
