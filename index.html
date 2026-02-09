@@ -67,6 +67,14 @@ button{
   <button class="on" onclick="setAlarm(true)">เปิดระบบ Alarm</button>
   <button class="off" onclick="setAlarm(false)">ปิดระบบ Alarm</button>
 
+  <button class="off" onclick="setAlarm(false)">ปิดระบบ Alarm</button>
+
+<!-- สถานะ Alarm -->
+<div id="alarmStatus" style="margin-top:10px;font-weight:bold;">
+  สถานะ Alarm: --
+</div>
+
+
   <!-- Sensor -->
   <div class="sensor">
     🌡 อุณหภูมิ: <span id="temp">--</span> °C<br>
@@ -133,6 +141,20 @@ db.ref("sensor").on("value", snap => {
   hum.innerText   = s.humidity ?? "--";
   light.innerText = s.light ?? "--";
 });
+
+  // ================= สถานะ Alarm =================
+db.ref("alarm/enable").on("value", snap => {
+  const statusDiv = document.getElementById("alarmStatus");
+
+  if(snap.val() === true){
+    statusDiv.innerHTML = "🟢 สถานะ Alarm: เปิดใช้งาน";
+    statusDiv.style.color = "#2ecc71";
+  }else{
+    statusDiv.innerHTML = "🔴 สถานะ Alarm: ปิดอยู่";
+    statusDiv.style.color = "#e74c3c";
+  }
+});
+
 </script>
 </body>
 </html>
