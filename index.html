@@ -1,101 +1,147 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<title>Smart Alarm</title>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <meta charset="UTF-8">
+  <title>Smart Alarm</title>
 
-<style>
-body{
-  font-family: system-ui;
-  background:#f2f4f8;
-  display:flex;
-  justify-content:center;
-}
-.card{
-  background:white;
-  width:320px;
-  margin-top:30px;
-  padding:20px;
-  border-radius:16px;
-  box-shadow:0 10px 30px rgba(0,0,0,.1);
-}
-h1{text-align:center}
-.time{
-  font-size:36px;
-  text-align:center;
-  color:#1e90ff;
-}
-.sensor{
-  display:flex;
-  justify-content:space-between;
-  margin:8px 0;
-}
-button{
-  width:100%;
-  padding:10px;
-  margin-top:8px;
-  border:none;
-  border-radius:10px;
-  font-size:16px;
-}
-.on{background:#2ecc71;color:white}
-.off{background:#e74c3c;color:white}
-.save{background:#3498db;color:white}
-</style>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #f2f4f8;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .card {
+      background: white;
+      width: 320px;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.1);
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    .clock {
+      font-size: 32px;
+      color: #1e88e5;
+      margin: 10px 0;
+    }
+
+    input[type="time"] {
+      width: 100%;
+      font-size: 20px;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 6px 0;
+      font-size: 16px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .save { background: #3498db; color: white; }
+    .on   { background: #2ecc71; color: white; }
+    .off  { background: #e74c3c; color: white; }
+
+    .sensor {
+      margin-top: 10px;
+      text-align: left;
+      font-size: 14px;
+    }
+  </style>
 </head>
 
 <body>
-<div class="card">
-<h1>⏰ Smart Alarm</h1>
-<div class="time" id="time">--:--:--</div>
+  <div class="card">
+    <h2>⏰ Smart Alarm</h2>
 
-<select id="hour"></select>
-<select id="minute"></select>
+    <div class="clock" id="now">--:--:--</div>
 
-<button class="save" onclick="saveAlarm()">💾 บันทึกเวลา</button>
-<button class="on" onclick="setEnable(true)">🔔 เปิด Alarm</button>
-<button class="off" onclick="setEnable(false)">⛔ ปิด Alarm</button>
+    <!-- ตั้งเวลาแบบ Digital -->
+    <input type="time" id="alarmTime" value="07:00">
 
-<hr>
-<div class="sensor">🌡 อุณหภูมิ <span id="temp">--</span></div>
-<div class="sensor">💧 ความชื้น <span id="hum">--</span></div>
-<div class="sensor">💡 แสง <span id="light">--</span></div>
-</div>
+    <button class="save" onclick="saveTime()">💾 บันทึกเวลา</button>
+    <button class="on" onclick="setAlarm(true)">🔔 เปิด Alarm</button>
+    <button class="off" onclick="setAlarm(false)">⛔ ปิด Alarm</button>
+
+    <div class="sensor">
+      🌡 อุณหภูมิ: <span id="temp">--</span> °C<br>
+      💧 ความชื้น: <span id="hum">--</span> %<br>
+      💡 แสง: <span id="light">--</span>
+    </div>
+  </div>
 
 <script>
-firebase.initializeApp({
-  databaseURL:"https://smart-alarm-9c9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
-});
+/* ================= Firebase Config ================= */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT",
+};
+
+firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-for(let i=0;i<24;i++) hour.innerHTML+=`<option>${i}</option>`;
-for(let i=0;i<60;i++) minute.innerHTML+=`<option>${i}</option>`;
+/* ================= นาฬิกาเรียลไทม์ ================= */
+setInterval(() => {
+  const now = new Date();
+  document.getElementById("now").innerText =
+    now.toLocaleTimeString("th-TH");
+}, 1000);
 
-db.ref("time/current").on("value",s=>{
-  time.innerText = s.val();
-});
+/* ================= บันทึกเวลา ================= */
+function saveTime() {
+  const time = document.getElementById("alarmTime").value;
+  if (!time) return;
 
-db.ref("sensor/temperature").on("value",s=>{
-  temp.innerText = s.val()+" °C";
-});
-db.ref("sensor/humidity").on("value",s=>{
-  hum.innerText = s.val()+" %";
-});
-db.ref("sensor/light").on("value",s=>{
-  light.innerText = s.val();
-});
+  const [h, m] = time.split(":");
 
-function saveAlarm(){
-  db.ref("alarm").update({
-    hour:+hour.value,
-    minute:+minute.value
+  firebase.database().ref("alarm").update({
+    hour: parseInt(h),
+    minute: parseInt(m)
   });
 }
-function setEnable(v){
-  db.ref("alarm/enable").set(v);
+
+/* ================= เปิด / ปิด Alarm ================= */
+function setAlarm(state) {
+  firebase.database().ref("alarm/enable").set(state);
 }
+
+/* ================= โหลดค่าจาก Firebase ================= */
+firebase.database().ref("alarm").on("value", snap => {
+  if (!snap.exists()) return;
+
+  const h = snap.val().hour.toString().padStart(2, "0");
+  const m = snap.val().minute.toString().padStart(2, "0");
+  document.getElementById("alarmTime").value = `${h}:${m}`;
+});
+
+/* ================= Sensor ================= */
+firebase.database().ref("sensor").on("value", snap => {
+  if (!snap.exists()) return;
+  document.getElementById("temp").innerText = snap.val().temp;
+  document.getElementById("hum").innerText = snap.val().hum;
+  document.getElementById("light").innerText = snap.val().light;
+});
 </script>
 </body>
 </html>
