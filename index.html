@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <title>Smart Alarm Control</title>
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -23,15 +26,23 @@ onValue(ref(db, "time/current"), s => {
 // ===== Sensor =====
 onValue(ref(db, "sensor"), s => {
   const d = s.val() || {};
-  document.getElementById("temp").innerText = d.temperature ?? "-";
-  document.getElementById("hum").innerText = d.humidity ?? "-";
-  document.getElementById("light").innerText = d.light ?? "-";
+  temp.innerText  = d.temperature ?? "-";
+  hum.innerText   = d.humidity ?? "-";
+  light.innerText = d.light ?? "-";
 });
 
 // ===== Alarm Status =====
 onValue(ref(db, "status/alarm_triggered"), s => {
-  document.getElementById("status").innerText =
-    s.val() ? "🚨 แจ้งเตือนอยู่ !!!" : "⏳ รอการแจ้งเตือน";
+  const card = document.getElementById("statusCard");
+  const text = document.getElementById("statusText");
+
+  if (s.val()) {
+    text.innerText = "🚨 แจ้งเตือนอยู่ !!!";
+    card.classList.add("alarm-on");
+  } else {
+    text.innerText = "⏳ รอการแจ้งเตือน";
+    card.classList.remove("alarm-on");
+  }
 });
 
 // ===== Buttons =====
@@ -40,45 +51,131 @@ window.saveAlarm = () => {
   set(ref(db, "alarm/minute"), parseInt(min.value));
 };
 
-window.enableAlarm = () => set(ref(db, "alarm/enable"), true);
+window.enableAlarm  = () => set(ref(db, "alarm/enable"), true);
 window.disableAlarm = () => set(ref(db, "alarm/enable"), false);
 </script>
 
 <style>
-body { font-family: sans-serif; background:#f4f4f4; }
-.card { background:white; padding:20px; margin:15px auto; width:300px; border-radius:10px; }
-button { width:100%; padding:10px; margin-top:8px; }
+* {
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f2f6fa;
+}
+
+.container {
+  max-width: 420px;
+  margin: auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+.time {
+  font-size: 40px;
+  text-align: center;
+  font-weight: bold;
+  color: #2196f3;
+}
+
+select {
+  padding: 8px;
+  font-size: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.btn-save   { background: #2196f3; color: white; }
+.btn-on     { background: #4caf50; color: white; }
+.btn-off    { background: #f44336; color: white; }
+
+.status {
+  font-size: 22px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.alarm-on {
+  background: #ffebee;
+  border: 2px solid #f44336;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+.sensor {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  margin: 8px 0;
+}
 </style>
 </head>
 
 <body>
 
-<div class="card">
-  <h3>เวลาปัจจุบัน</h3>
-  <h1 id="time">--:--:--</h1>
-</div>
+<div class="container">
 
-<div class="card">
-  <h3>ตั้งเวลา Alarm</h3>
-  <select id="hour">
-    <script>for(let i=0;i<24;i++)document.write(`<option>${i}</option>`)</script>
-  </select> :
-  <select id="min">
-    <script>for(let i=0;i<60;i++)document.write(`<option>${i}</option>`)</script>
-  </select>
+  <h1>⏰ Smart Alarm</h1>
 
-  <button onclick="saveAlarm()">บันทึกเวลา</button>
-  <button onclick="enableAlarm()">เปิด Alarm</button>
-  <button onclick="disableAlarm()">ปิด Alarm</button>
+  <div class="card">
+    <div class="time" id="time">--:--:--</div>
+  </div>
 
-  <p id="status">⏳ รอการแจ้งเตือน</p>
-</div>
+  <div class="card">
+    <h3>ตั้งเวลา Alarm</h3>
+    <div style="text-align:center">
+      <select id="hour">
+        <script>for(let i=0;i<24;i++)document.write(`<option>${i}</option>`)</script>
+      </select>
+      :
+      <select id="min">
+        <script>for(let i=0;i<60;i++)document.write(`<option>${i}</option>`)</script>
+      </select>
+    </div>
 
-<div class="card">
-  <h3>ข้อมูลเซ็นเซอร์</h3>
-  🌡️ <span id="temp"></span> °C<br>
-  💧 <span id="hum"></span> %<br>
-  💡 <span id="light"></span>
+    <button class="btn-save" onclick="saveAlarm()">💾 บันทึกเวลา</button>
+    <button class="btn-on" onclick="enableAlarm()">🔔 เปิด Alarm</button>
+    <button class="btn-off" onclick="disableAlarm()">🔕 ปิด Alarm</button>
+  </div>
+
+  <div class="card" id="statusCard">
+    <div class="status" id="statusText">⏳ รอการแจ้งเตือน</div>
+  </div>
+
+  <div class="card">
+    <h3>📊 ข้อมูลเซ็นเซอร์</h3>
+    <div class="sensor">🌡️ อุณหภูมิ <span id="temp"></span> °C</div>
+    <div class="sensor">💧 ความชื้น <span id="hum"></span> %</div>
+    <div class="sensor">💡 แสง <span id="light"></span></div>
+  </div>
+
 </div>
 
 </body>
