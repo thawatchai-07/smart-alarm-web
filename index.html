@@ -1,56 +1,64 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <title>Smart Alarm</title>
+<meta charset="UTF-8">
+<title>Smart Alarm Control</title>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    const firebaseConfig = {
-      databaseURL: "https://smart-alarm-9c9ee-default-rtdb.asia-southeast1.firebasedatabase.app/"
-    };
+const firebaseConfig = {
+  databaseURL: "https://smart-alarm-9c9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
+};
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-    // ===== Time =====
-    onValue(ref(db, "time/current"), (snap) => {
-      document.getElementById("time").innerText = snap.val();
-    });
+// ===== Time =====
+onValue(ref(db, "time/current"), s => {
+  document.getElementById("time").innerText = s.val() || "--:--:--";
+});
 
-    // ===== Sensor =====
-    onValue(ref(db, "sensor"), (snap) => {
-      const d = snap.val();
-      document.getElementById("temp").innerText = d.temperature;
-      document.getElementById("hum").innerText = d.humidity;
-      document.getElementById("light").innerText = d.light;
-    });
+// ===== Sensor =====
+onValue(ref(db, "sensor"), s => {
+  const d = s.val() || {};
+  document.getElementById("temp").innerText = d.temperature ?? "-";
+  document.getElementById("hum").innerText = d.humidity ?? "-";
+  document.getElementById("light").innerText = d.light ?? "-";
+});
 
-    // ===== Alarm Status =====
-    onValue(ref(db, "alarm/enable"), (snap) => {
-      document.getElementById("status").innerText =
-        snap.val() ? "เปิดใช้งาน" : "ปิด";
-    });
+// ===== Alarm Status =====
+onValue(ref(db, "status/alarm_triggered"), s => {
+  document.getElementById("status").innerText =
+    s.val() ? "🚨 แจ้งเตือนอยู่ !!!" : "⏳ รอการแจ้งเตือน";
+});
 
-    window.setAlarm = () => {
-      set(ref(db, "alarm/hour"), parseInt(hour.value));
-      set(ref(db, "alarm/minute"), parseInt(min.value));
-    };
+// ===== Buttons =====
+window.saveAlarm = () => {
+  set(ref(db, "alarm/hour"), parseInt(hour.value));
+  set(ref(db, "alarm/minute"), parseInt(min.value));
+};
 
-    window.enableAlarm = () => set(ref(db, "alarm/enable"), true);
-    window.disableAlarm = () => set(ref(db, "alarm/enable"), false);
-  </script>
+window.enableAlarm = () => set(ref(db, "alarm/enable"), true);
+window.disableAlarm = () => set(ref(db, "alarm/enable"), false);
+</script>
+
+<style>
+body { font-family: sans-serif; background:#f4f4f4; }
+.card { background:white; padding:20px; margin:15px auto; width:300px; border-radius:10px; }
+button { width:100%; padding:10px; margin-top:8px; }
+</style>
 </head>
 
-<body style="font-family:sans-serif;text-align:center">
-  <h1>⏰ Smart Alarm</h1>
+<body>
 
-  <h2 id="time">--:--:--</h2>
+<div class="card">
+  <h3>เวลาปัจจุบัน</h3>
+  <h1 id="time">--:--:--</h1>
+</div>
 
-  <hr>
-
+<div class="card">
   <h3>ตั้งเวลา Alarm</h3>
   <select id="hour">
     <script>for(let i=0;i<24;i++)document.write(`<option>${i}</option>`)</script>
@@ -59,20 +67,19 @@
     <script>for(let i=0;i<60;i++)document.write(`<option>${i}</option>`)</script>
   </select>
 
-  <br><br>
-  <button onclick="setAlarm()">บันทึกเวลา</button>
-  <br><br>
+  <button onclick="saveAlarm()">บันทึกเวลา</button>
   <button onclick="enableAlarm()">เปิด Alarm</button>
   <button onclick="disableAlarm()">ปิด Alarm</button>
 
-  <p>สถานะ Alarm: <b id="status">---</b></p>
+  <p id="status">⏳ รอการแจ้งเตือน</p>
+</div>
 
-  <hr>
-
-  <h3>Sensor</h3>
-  🌡 อุณหภูมิ: <span id="temp"></span> °C<br>
-  💧 ความชื้น: <span id="hum"></span> %<br>
-  💡 แสง: <span id="light"></span>
+<div class="card">
+  <h3>ข้อมูลเซ็นเซอร์</h3>
+  🌡️ <span id="temp"></span> °C<br>
+  💧 <span id="hum"></span> %<br>
+  💡 <span id="light"></span>
+</div>
 
 </body>
 </html>
