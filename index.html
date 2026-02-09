@@ -3,78 +3,97 @@
 <head>
 <meta charset="UTF-8">
 <title>Smart Alarm</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
 <style>
-body{font-family:sans-serif;background:#f4f6f8}
-.card{background:#fff;padding:20px;margin:15px auto;width:320px;
-border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.1);text-align:center}
-.time{font-size:40px;color:#2196f3;font-weight:bold}
-button{width:100%;padding:12px;margin:6px;border:0;border-radius:8px;
-font-size:16px;color:#fff;cursor:pointer}
-.save{background:#2196f3}
-.on{background:#4caf50}
-.off{background:#f44336}
-.status.on{color:red;font-weight:bold}
+body{
+  font-family: system-ui;
+  background:#f2f4f8;
+  display:flex;
+  justify-content:center;
+}
+.card{
+  background:white;
+  width:320px;
+  margin-top:30px;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.1);
+}
+h1{text-align:center}
+.time{
+  font-size:36px;
+  text-align:center;
+  color:#1e90ff;
+}
+.sensor{
+  display:flex;
+  justify-content:space-between;
+  margin:8px 0;
+}
+button{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+}
+.on{background:#2ecc71;color:white}
+.off{background:#e74c3c;color:white}
+.save{background:#3498db;color:white}
 </style>
 </head>
+
 <body>
-
 <div class="card">
-  <h2>⏰ Smart Alarm</h2>
-  <div class="time" id="time">--:--:--</div>
+<h1>⏰ Smart Alarm</h1>
+<div class="time" id="time">--:--:--</div>
+
+<select id="hour"></select>
+<select id="minute"></select>
+
+<button class="save" onclick="saveAlarm()">💾 บันทึกเวลา</button>
+<button class="on" onclick="setEnable(true)">🔔 เปิด Alarm</button>
+<button class="off" onclick="setEnable(false)">⛔ ปิด Alarm</button>
+
+<hr>
+<div class="sensor">🌡 อุณหภูมิ <span id="temp">--</span></div>
+<div class="sensor">💧 ความชื้น <span id="hum">--</span></div>
+<div class="sensor">💡 แสง <span id="light">--</span></div>
 </div>
 
-<div class="card">
-  <select id="h"></select> :
-  <select id="m"></select>
-  <button class="save" onclick="save()">💾 บันทึกเวลา</button>
-  <button class="on" onclick="enable(true)">🔔 เปิด Alarm</button>
-  <button class="off" onclick="enable(false)">🔕 ปิด Alarm</button>
-</div>
-
-<div class="card">
-  <div id="status">⏳ รอการแจ้งเตือน</div>
-</div>
-
-<script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {getDatabase,ref,set,onValue} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-const app = initializeApp({
+<script>
+firebase.initializeApp({
   databaseURL:"https://smart-alarm-9c9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
-const db = getDatabase(app);
+const db = firebase.database();
 
-let H=0,M=0,S=0;
+for(let i=0;i<24;i++) hour.innerHTML+=`<option>${i}</option>`;
+for(let i=0;i<60;i++) minute.innerHTML+=`<option>${i}</option>`;
 
-// เดินเวลาเองทุก 1 วิ
-setInterval(()=>{
-  S++; if(S>=60){S=0;M++;} if(M>=60){M=0;H++;} if(H>=24)H=0;
-  document.getElementById("time").innerText=
-  `${String(H).padStart(2,'0')}:${String(M).padStart(2,'0')}:${String(S).padStart(2,'0')}`;
-},1000);
-
-// sync เวลาเริ่มต้น
-onValue(ref(db,"time/current"),s=>{
-  if(!s.val())return;
-  [H,M,S]=s.val().split(":").map(Number);
+db.ref("time/current").on("value",s=>{
+  time.innerText = s.val();
 });
 
-// alarm status
-onValue(ref(db,"status/alarm_triggered"),s=>{
-  document.getElementById("status").innerHTML =
-    s.val() ? "🚨 กำลังแจ้งเตือน!!!" : "⏳ รอการแจ้งเตือน";
-  document.getElementById("status").className =
-    s.val() ? "status on" : "status";
+db.ref("sensor/temperature").on("value",s=>{
+  temp.innerText = s.val()+" °C";
+});
+db.ref("sensor/humidity").on("value",s=>{
+  hum.innerText = s.val()+" %";
+});
+db.ref("sensor/light").on("value",s=>{
+  light.innerText = s.val();
 });
 
-for(let i=0;i<24;i++)h.innerHTML+=`<option>${i}</option>`;
-for(let i=0;i<60;i++)m.innerHTML+=`<option>${i}</option>`;
-
-window.save=()=>{
-  set(ref(db,"/alarm/hour"),+h.value);
-  set(ref(db,"/alarm/minute"),+m.value);
-};
-window.enable=v=>set(ref(db,"/alarm/enable"),v);
-</script>
-</body>
-</html>
+function saveAlarm(){
+  db.ref("alarm").update({
+    hour:+hour.value,
+    minute:+minute.value
+  });
+}
+function setEnable(v){
+  db.ref("alarm/enable").set(v);
+}
+</s
