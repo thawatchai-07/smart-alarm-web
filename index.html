@@ -30,7 +30,7 @@ body{
   color:#1e88e5;
   margin:10px 0;
 }
-select,button{
+input,button{
   width:100%;
   padding:10px;
   margin:6px 0;
@@ -60,13 +60,12 @@ button{
   <!-- เวลาเรียลไทม์ -->
   <div class="clock" id="time">--:--:--</div>
 
-  <!-- ตั้งเวลา -->
-  <select id="hour"></select>
-  <select id="minute"></select>
+  <!-- ตั้งเวลาแบบนาฬิกาดิจิทัล -->
+  <input type="time" id="alarmTime">
 
-  <button class="save" onclick="saveTime()">💾 บันทึกเวลา</button>
-  <button class="on" onclick="setAlarm(true)">เปิด ระบบ Alarm</button>
-  <button class="off" onclick="setAlarm(false)">ปิด ระบบ Alarm</button>
+  <button class="save" onclick="saveTime()">บันทึกเวลา</button>
+  <button class="on" onclick="setAlarm(true)">เปิดระบบ Alarm</button>
+  <button class="off" onclick="setAlarm(false)">ปิดระบบ Alarm</button>
 
   <!-- Sensor -->
   <div class="sensor">
@@ -85,16 +84,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ================= สร้างตัวเลือกเวลา =================
-for(let i=0;i<24;i++){
-  hour.innerHTML += `<option value="${i}">${String(i).padStart(2,'0')}</option>`;
-}
-for(let i=0;i<60;i++){
-  minute.innerHTML += `<option value="${i}">${String(i).padStart(2,'0')}</option>`;
-}
-
 // ================= แสดงเวลา RTC =================
-db.ref("time/current").on("value",snap=>{
+db.ref("time/current").on("value", snap => {
   if(snap.exists()){
     document.getElementById("time").innerText = snap.val();
   }
@@ -102,30 +93,45 @@ db.ref("time/current").on("value",snap=>{
 
 // ================= บันทึกเวลา =================
 function saveTime(){
+  const time = document.getElementById("alarmTime").value;
+
+  if(!time){
+    alert("กรุณาเลือกเวลาก่อน");
+    return;
+  }
+
+  const [hour, minute] = time.split(":");
+
   db.ref("alarm").update({
-    hour: parseInt(hour.value),
-    minute: parseInt(minute.value)
+    hour: parseInt(hour),
+    minute: parseInt(minute)
   });
+
+  alert("✅ บันทึกเวลาสำเร็จ");
 }
 
 // ================= เปิด / ปิด Alarm =================
 function setAlarm(state){
   db.ref("alarm/enable").set(state);
+  alert(state ? "เปิดระบบ Alarm สำเร็จ" : "ปิดระบบ Alarm สำเร็จ");
 }
 
 // ================= โหลดค่า Alarm =================
-db.ref("alarm").on("value",snap=>{
+db.ref("alarm").on("value", snap => {
   if(!snap.exists()) return;
-  hour.value = snap.val().hour;
-  minute.value = snap.val().minute;
+
+  const h = String(snap.val().hour).padStart(2,'0');
+  const m = String(snap.val().minute).padStart(2,'0');
+  document.getElementById("alarmTime").value = `${h}:${m}`;
 });
 
 // ================= Sensor =================
-db.ref("sensor").on("value",snap=>{
+db.ref("sensor").on("value", snap => {
   if(!snap.exists()) return;
-  temp.innerText  = snap.val().temperature;
-  hum.innerText   = snap.val().humidity;
-  light.innerText = snap.val().light;
+  const s = snap.val();
+  temp.innerText  = s.temperature ?? "--";
+  hum.innerText   = s.humidity ?? "--";
+  light.innerText = s.light ?? "--";
 });
 </script>
 </body>
